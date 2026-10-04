@@ -1,0 +1,37 @@
+name: build-extensions-dll
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # 32-bit MSVC is required: the sources use __declspec(naked)/__asm and rely on
+    # MSVC's std::unordered_map ordering, so a mingw/GCC build would be wrong.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up 32-bit MSVC (x86)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86
+
+      - name: Configure
+        run: cmake -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -S . -B build
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Report output hash
+        shell: cmd
+        run: |
+          dir build\Extensions.dll
+          certutil -hashfile build\Extensions.dll SHA256
+
+      - name: Upload Extensions.dll
+        uses: actions/upload-artifact@v4
+        with:
+          name: Extensions-dll
+          path: build/Extensions.dll
+          if-no-files-found: error
